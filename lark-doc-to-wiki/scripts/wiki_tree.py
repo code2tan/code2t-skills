@@ -9,6 +9,7 @@ Commands:
   info                 Node details by token
   children             List child nodes
   space-add            Register a new knowledge space
+  export               Export space tree structure as JSON
 
 Database: ../wiki_tree.db (sibling to scripts/ directory)
 """
@@ -671,6 +672,69 @@ def cmd_space_add(args):
         print(json.dumps({"ok": False, "error": f"Space '{args.space_name}' not found via API"}))
 
 
+# ── Export ────────────────────────────────────────────────────
+
+def _build_tree(conn, space_id, parent_token=""):
+    """Recursively build a tree structure from nodes. Returns list of dicts."""
+    rows = conn.execute(
+        """SELECT node_token, title, obj_type, has_child, node_type, parent_token
+           FROM nodes WHERE space_id = ? AND parent_token = ?
+           ORDER BY sort_order, title""",
+        [space_id, parent_token]
+    ).fetchall()
+
+    result = []
+    for r in rows:
+        node = {
+            "node_token": r["node_token"],
+            "title": r["title"],
+            "obj_type": r["obj_type"],
+            "node_type": r["node_type"],
+            "has_child": bool(r["has_child"]),
+            "parent_token": r["parent_token"],
+        }
+        if r["has_child"]:
+            children = _build_tree(conn, space_id, r["node_token"])
+            if children:
+                node["children"] = children
+        result.append(node)
+    return result
+
+
+def cmd_export(args):
+    """Handle export command."""
+    conn, _ = get_db(args.db_path)
+
+    space_id = _resolve_space_id(conn, args.space_name, args.space_id)
+    if not space_id:
+        print(json.dumps({"ok": False, "error": "Space not found. Use space-add first."}))
+        return
+
+    # Get space info
+    space = conn.execute(
+        "SELECT space_id, name, root_token FROM spaces WHERE space_id = ?", [space_id]
+    ).fetchone()
+
+    tree = _build_tree(conn, space_id)
+    node_count = conn.execute(
+        "SELECT COUNT(*) as cnt FROM nodes WHERE space_id = ?", [space_id]
+    ).fetchone()["cnt"]
+
+    output = {
+        "ok": True,
+        "space": {
+            "space_id": space["space_id"],
+            "name": space["name"],
+            "root_token": space["root_token"],
+        },
+        "node_count": node_count,
+        "tree": tree,
+    }
+
+    indent = args.indent or 2
+    print(json.dumps(output, ensure_ascii=False, indent=None if args.compact else indent))
+
+
 # ── CLI ───────────────────────────────────────────────────────
 
 def main():
@@ -715,6 +779,15 @@ def main():
     p.add_argument("--space-name", required=True)
     p.add_argument("--db-path", default=str(DEFAULT_DB))
 
+    # export
+    p = subparsers.add_parser("export", help="Export space tree structure as JSON")
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--space-name")
+    group.add_argument("--space-id")
+    p.add_argument("--compact", action="store_true", help="Output without indentation")
+    p.add_argument("--indent", type=int, default=2, help="JSON indent level (default 2)")
+    p.add_argument("--db-path", default=str(DEFAULT_DB))
+
     args = parser.parse_args()
 
     if args.command == "search":
@@ -729,6 +802,8 @@ def main():
         cmd_children(args)
     elif args.command == "space-add":
         cmd_space_add(args)
+    elif args.command == "export":
+        cmd_export(args)
     else:
         parser.print_help()
 
