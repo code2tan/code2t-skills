@@ -1,0 +1,132 @@
+{
+  "skill_name": "doc-translator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "翻译这个文件 /Users/code2t-cpy/.claude/skills/doc-translator-workspace/iteration-1/test-files/ml-basics.md，使用 doc-translator skill 的规则。输出到同级目录。",
+      "expected_output": "在同级目录生成 ml-basics-zh.md，包含：正确的中文翻译、ML术语首次出现标注英文、Mermaid图表完全保留、代码块注释详细解释了为什么而不仅仅是做什么、术语表三列结构保留",
+      "files": [
+        "/Users/code2t-cpy/.claude/skills/doc-translator-workspace/iteration-1/test-files/ml-basics.md"
+      ],
+      "assertions": [
+        {
+          "name": "output_file_exists_with_zh_suffix",
+          "description": "输出文件存在且文件名包含 -zh 后缀"
+        },
+        {
+          "name": "term_first_occurrence_has_english_annotation",
+          "description": "ML术语首次出现时有英文括号标注（如'监督学习（Supervised Learning）'）"
+        },
+        {
+          "name": "mermaid_preserved_untranslated",
+          "description": "Mermaid 图表语法完全保留，节点标签未被翻译"
+        },
+        {
+          "name": "code_blocks_intact_with_core_comments",
+          "description": "代码块结构完整，添加了核心逻辑注释"
+        },
+        {
+          "name": "code_comments_detailed_why",
+          "description": "核心代码注释解释了『为什么』而不仅仅是『做什么』，如算法策略说明、超参数选择理由、设计权衡"
+        },
+        {
+          "name": "glossary_structure_preserved",
+          "description": "术语表三列结构保留，第一列术语保留英文"
+        },
+        {
+          "name": "formulas_preserved_in_latex",
+          "description": "数学公式以 LaTeX/Markdown 格式保留"
+        },
+        {
+          "name": "block_formulas_use_newline_format",
+          "description": "所有 $$...$$ 块公式使用 $$ 独占行格式（非 $$公式内容$$ 一行格式），确保 Typora 正确居中渲染"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "翻译这个文件 /Users/code2t-cpy/.claude/skills/doc-translator-workspace/iteration-1/test-files/math-formulas.md，使用 doc-translator skill 的规则。特别关注连等公式的换行对齐处理。输出到同级目录。",
+      "expected_output": "在同级目录生成 math-formulas-zh.md，包含：连等公式已换行对齐（使用 &= 和 \\[15pt]）、SVD/LoRA等术语正确标注、代码注释详细解释了为什么而不仅仅是做什么、术语表保留英文术语列",
+      "files": [
+        "/Users/code2t-cpy/.claude/skills/doc-translator-workspace/iteration-1/test-files/math-formulas.md"
+      ],
+      "assertions": [
+        {
+          "name": "output_file_exists_with_zh_suffix",
+          "description": "输出文件存在且文件名包含 -zh 后缀"
+        },
+        {
+          "name": "chain_equalities_aligned_with_ampersand",
+          "description": "连等公式已换行对齐，使用 &= 和 \\[15pt]"
+        },
+        {
+          "name": "complex_formulas_preserved",
+          "description": "复杂数学公式（SVD分解、矩阵运算）格式保留完整"
+        },
+        {
+          "name": "code_blocks_intact_with_core_comments",
+          "description": "代码块结构完整，添加了核心逻辑注释"
+        },
+        {
+          "name": "code_comments_detailed_why",
+          "description": "核心代码注释解释了『为什么』而不仅仅是『做什么』，如算法策略说明、超参数选择理由、设计权衡"
+        },
+        {
+          "name": "glossary_first_column_english",
+          "description": "术语表第一列保留英文术语"
+        },
+        {
+          "name": "block_formulas_use_newline_format",
+          "description": "所有 $$...$$ 块公式使用 $$ 独占行格式（非 $$公式内容$$ 一行格式），确保 Typora 正确居中渲染"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "翻译包含正文行内数学表达式的 Markdown 文档。文档中有类似 y_i、w^T x + b = 0、||w||、{-1, +1} 等直接写在 prose 中的 ASCII 数学表达式。",
+      "expected_output": "输出文件中所有正文里的行内数学表达式已转为 $...$ LaTeX 格式，代码块内的表达式不变，Mermaid 块不变。",
+      "assertions": [
+        {
+          "name": "output_file_exists_with_zh_suffix",
+          "description": "输出文件存在且文件名包含 -zh 后缀"
+        },
+        {
+          "name": "inline_subscript_variables_converted",
+          "description": "正文中的下标变量（如 y_i、x_i、alpha_i）已转为 $y_i$、$x_i$、$\\alpha_i$ 格式"
+        },
+        {
+          "name": "inline_superscript_converted",
+          "description": "正文中的上标/转置（如 w^T、x^2）已转为 $w^T$、$x^2$ 格式"
+        },
+        {
+          "name": "inline_norms_converted",
+          "description": "正文中的范数（如 ||w||、||w||^2）已转为 $||w||$、$||w||^2$ 格式"
+        },
+        {
+          "name": "inline_multiplication_normalized",
+          "description": "正文中的乘法星号（如 y_i * (）已转为 $y_i \\cdot ($"
+        },
+        {
+          "name": "inline_greek_letters_converted",
+          "description": "正文中的希腊字母名称（如 epsilon、gamma）已转为 $\\epsilon$、$\\gamma$ 格式"
+        },
+        {
+          "name": "inline_mixed_formulas_wrapped",
+          "description": "正文中的混合数学表达式（如 w^T x + b = 0）已整体包裹为 $w^T x + b = 0$"
+        },
+        {
+          "name": "code_expressions_not_converted",
+          "description": "反引号包裹的代码标识符（如 `hinge_loss`）未被错误转为 LaTeX"
+        },
+        {
+          "name": "mermaid_preserved",
+          "description": "Mermaid 图表完全保留未被修改"
+        },
+        {
+          "name": "urls_not_converted",
+          "description": "URL 中的参数（如 ?gamma=0.5）未被错误转为 LaTeX"
+        }
+      ]
+    }
+  ]
+}
