@@ -1,13 +1,13 @@
 # code2t-skills
 
-code2t 的 Claude Code Skills 仓库，包含多个实用技能，用于增强 Claude Code 在飞书文档操作和技术翻译场景中的能力。
+code2tan 的 Claude Code Skills 仓库，包含多个实用技能，用于增强 Claude Code 在飞书文档操作和技术翻译场景中的能力。
 
 ## 安装
 
 ### 前置条件
 
 - [Claude Code](https://docs.anthropic.com/zh-CN/docs/claude-code/overview)（支持 Skills 的版本）
-- [lark-cli](https://github.com/code2t/lark-cli)（飞书文档相关 Skill 的前置 CLI 工具）
+- [lark-cli](https://github.com/code2tan/lark-cli)（飞书文档相关 Skill 的前置 CLI 工具）
 - Python 3.8+
 
 ### 安装 Skills
@@ -17,7 +17,7 @@ code2t 的 Claude Code Skills 仓库，包含多个实用技能，用于增强 C
 在 Claude Code 中执行以下命令添加本仓库为插件市场并安装：
 
 ```
-/plugin marketplace add https://github.com/code2t/code2t-skills.git
+/plugin marketplace add https://github.com/code2tan/code2t-skills.git
 ```
 
 然后安装对应的 Skill：
@@ -144,25 +144,31 @@ python3 scripts/wiki_tree.py space-add --space-name "你的知识库名称"
 
 ```
 code2t-skills/
+├── .claude-plugin/
+│   └── marketplace.json             # 插件市场清单（Claude Code 识别入口）
 ├── doc-translator/
-│   ├── SKILL.md                 # Skill 定义与工作流程
+│   ├── .claude-plugin/
+│   │   └── plugin.json              # 插件清单
+│   ├── SKILL.md                     # Skill 定义与工作流程
 │   ├── evals/
-│   │   └── evals.json           # 评估用例
+│   │   └── evals.json               # 评估用例
 │   ├── references/
-│   │   ├── code-comment-rules.md   # 代码注释规则
-│   │   ├── formula-rules.md        # 公式处理规则
-│   │   └── terminology.db          # SQLite 术语库
+│   │   ├── code-comment-rules.md    # 代码注释规则
+│   │   ├── formula-rules.md         # 公式处理规则
+│   │   └── terminology.db           # SQLite 术语库
 │   └── scripts/
-│       ├── term_manager.py         # 术语检测与管理
-│       ├── detect_formulas.py      # 公式检测
-│       ├── detect_code_comments.py # 代码注释检测
-│       └── check_mermaid.py        # Mermaid 图表检查
+│       ├── term_manager.py          # 术语检测与管理
+│       ├── detect_formulas.py       # 公式检测
+│       ├── detect_code_comments.py  # 代码注释检测
+│       └── check_mermaid.py         # Mermaid 图表检查
 └── lark-doc-to-wiki/
-    ├── SKILL.md                    # Skill 定义与工作流程
-    ├── WIKI_TREE_DESIGN.md         # wiki_tree 数据库设计
+    ├── .claude-plugin/
+    │   └── plugin.json              # 插件清单
+    ├── SKILL.md                     # Skill 定义与工作流程
+    ├── WIKI_TREE_DESIGN.md          # wiki_tree 数据库设计
     └── scripts/
-        ├── prepare.py              # 准备与清理
-        └── wiki_tree.py            # 知识库节点缓存（SQLite + FTS5）
+        ├── prepare.py               # 准备与清理
+        └── wiki_tree.py             # 知识库节点缓存（SQLite + FTS5）
 ```
 
 ## 许可证

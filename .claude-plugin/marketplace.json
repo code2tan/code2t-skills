@@ -1,0 +1,19 @@
+{
+  "name": "code2t-skills",
+  "owner": {
+    "name": "code2tan",
+    "email": "anglebanghua@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "doc-translator",
+      "source": "./doc-translator",
+      "description": "将技术/学术 Markdown 文档翻译为中文，专为 ML/AI/数学/CS 领域优化，支持术语管理、公式处理、代码注释"
+    },
+    {
+      "name": "lark-doc-to-wiki",
+      "source": "./lark-doc-to-wiki",
+      "description": "将飞书文档（含图片、引用、格式）完整迁移到知识库指定节点下"
+    }
+  ]
+}

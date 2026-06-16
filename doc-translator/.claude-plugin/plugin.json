@@ -1,0 +1,14 @@
+{
+  "name": "doc-translator",
+  "displayName": "Doc Translator",
+  "version": "1.0.0",
+  "description": "将技术/学术 Markdown 文档翻译为中文，专为机器学习、数学、计算机科学领域文档优化",
+  "author": {
+    "name": "code2tan"
+  },
+  "homepage": "https://github.com/code2tan/code2t-skills",
+  "repository": "https://github.com/code2tan/code2t-skills",
+  "license": "MIT",
+  "keywords": ["翻译", "translation", "markdown", "技术文档", "机器学习", "LaTeX"],
+  "skills": "./"
+}
