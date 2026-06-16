@@ -1,0 +1,120 @@
+name: Auto Bump Plugin Version
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Determine bump level from commit messages
+        id: bump-level
+        run: |
+          # 获取本次 push 中所有新 commit 的 message
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            # 首次 push，取所有 commit
+            MESSAGES=$(git log --format=%B ${{ github.event.before }}..HEAD)
+          else
+            MESSAGES=$(git log --format=%B ${{ github.event.before }}..${{ github.sha }})
+          fi
+
+          LEVEL="patch"
+
+          # 检查 commit message 中的 bump 指令
+          if echo "$MESSAGES" | grep -qiE 'BREAKING CHANGE|\[bump major\]|\[major\]'; then
+            LEVEL="major"
+          elif echo "$MESSAGES" | grep -qiE '^feat[(:]|\[bump minor\]|\[minor\]'; then
+            LEVEL="minor"
+          fi
+
+          echo "level=$LEVEL" >> $GITHUB_OUTPUT
+          echo "Bump level: $LEVEL"
+
+      - name: Detect changed skill directories
+        id: changed-skills
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+          else
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }}..${{ github.sha }})
+          fi
+
+          SKILLS=""
+          for dir in lark-doc-to-wiki doc-translator; do
+            if echo "$CHANGED_FILES" | grep -q "^${dir}/"; then
+              SKILLS="$SKILLS $dir"
+            fi
+          done
+
+          # 去空格
+          SKILLS=$(echo "$SKILLS" | xargs)
+          echo "skills=$SKILLS" >> $GITHUB_OUTPUT
+          echo "Changed skills: $SKILLS"
+
+      - name: Bump versions
+        id: bump
+        if: steps.changed-skills.outputs.skills != ''
+        run: |
+          LEVEL="${{ steps.bump-level.outputs.level }}"
+
+          for skill in ${{ steps.changed-skills.outputs.skills }}; do
+            PLUGIN_JSON="${skill}/.claude-plugin/plugin.json"
+            if [ ! -f "$PLUGIN_JSON" ]; then
+              echo "::warning::No plugin.json found for $skill"
+              continue
+            fi
+
+            OLD_VERSION=$(jq -r '.version' "$PLUGIN_JSON")
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD_VERSION"
+
+            case "$LEVEL" in
+              major)
+                NEW_MAJOR=$((MAJOR + 1))
+                NEW_VERSION="${NEW_MAJOR}.0.0"
+                ;;
+              minor)
+                NEW_MINOR=$((MINOR + 1))
+                NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+                ;;
+              patch|*)
+                NEW_PATCH=$((PATCH + 1))
+                NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+                ;;
+            esac
+
+            # 写入新版本号
+            jq --arg v "$NEW_VERSION" '.version = $v' "$PLUGIN_JSON" > "${PLUGIN_JSON}.tmp"
+            mv "${PLUGIN_JSON}.tmp" "$PLUGIN_JSON"
+
+            echo "${skill}_old=$OLD_VERSION" >> $GITHUB_OUTPUT
+            echo "${skill}_new=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "  $skill: $OLD_VERSION → $NEW_VERSION ($LEVEL)"
+          done
+
+      - name: Commit and push version bumps
+        if: steps.bump.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 收集 bump 信息用于 commit message
+          COMMIT_MSG="chore: auto bump plugin versions [skip ci]"
+          for skill in ${{ steps.changed-skills.outputs.skills }}; do
+            echo "  $skill: $OLD → $NEW"
+          done
+
+          git add .
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+            exit 0
+          fi
+
+          git commit -m "$COMMIT_MSG"
+          git push

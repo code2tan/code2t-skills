@@ -1,6 +1,7 @@
 ---
 name: lark-doc-to-wiki
 description: 将飞书文档内容（含图片、引用、格式）整理迁移到知识库指定父节点下，在父节点下新建子节点并填充内容。当用户说"把这篇文章整理到知识库"、"把文档迁移到 wiki 节点"、"复制文档到知识库"、"把文章搬到知识库"、"将文档内容同步到知识库"、"保存这篇文章到知识库"、"归档文档到知识库"、"把这篇 doc 整理到 xxx 节点下"、"把文档整理过去需要处理图片"时触发。即使文档不在飞书域名下（如 doubao.com），只要路径模式包含 /docx/ 或 /wiki/ 也应使用本 skill。
+allowed-tools: Bash(python3 scripts/wiki_tree.py *), Bash(python3 scripts/prepare.py *), Bash(lark-cli *), Read, Write
 ---
 
 # lark-doc-to-wiki：文档整理到飞书知识库
