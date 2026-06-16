@@ -217,3 +217,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .idea
+
+# SQLite WAL mode temporary files
+*.db-shm
+*.db-wal
+
+# lark-doc-to-wiki cache database
+lark-doc-to-wiki/wiki_tree.db
