@@ -5,9 +5,10 @@ lark-doc-to-wiki 准备工作脚本
 功能：
 1. 通过 wiki_tree.py 查找知识库父节点（SQLite + FTS5 搜索，内置按需同步）
 2. 在父节点下新建子节点（使用源文档标题）
-3. 读取源文档内容，提取图片 token
-4. 下载所有图片到临时目录
-5. 构建含图片占位的 XML 内容文件
+3. 读取源文档内容，提取图片 token 和嵌入电子表格
+4. 通过 lark-cli sheets +csv-get 读取嵌入电子表格数据，转为内联 HTML 表格
+5. 下载所有图片到临时目录
+6. 构建含图片占位和内联表格的 XML 内容文件
 
 用法：
   # 按节点名称查找（推荐）
@@ -182,6 +183,131 @@ def extract_image_tokens(content):
     return images
 
 
+def extract_sheet_tags(content):
+    """从文档 XML 中提取所有嵌入电子表格标签
+
+    匹配格式: <sheet token="SPREADSHEET_TOKEN" sheet-id="SHEET_ID"></sheet>
+    属性顺序不敏感。跳过 type="blank" 的空白 sheet（无数据可读）。
+
+    返回: [{"token": "...", "sheet_id": "...", "full_tag": "..."}, ...]
+    """
+    sheets = []
+    # 分两步匹配：先用宽泛正则匹配完整 <sheet> 标签，再从中提取属性
+    tag_pattern = re.compile(r'<sheet\s[^>]*?/?>', re.IGNORECASE)
+    token_pattern = re.compile(r'token="([^"]+)"', re.IGNORECASE)
+    sheet_id_pattern = re.compile(r'sheet-id="([^"]+)"', re.IGNORECASE)
+
+    for match in tag_pattern.finditer(content):
+        full_tag = match.group(0)
+        # 跳过空白 sheet（type="blank" 无实际数据）
+        if 'type="blank"' in full_tag:
+            token_m = token_pattern.search(full_tag)
+            token_preview = token_m.group(1)[:16] if token_m else "?"
+            print(f"  Skip: blank sheet (token={token_preview}...)")
+            continue
+        token_m = token_pattern.search(full_tag)
+        sid_m = sheet_id_pattern.search(full_tag)
+        if not token_m or not sid_m:
+            # 缺少必要属性，跳过
+            continue
+        sheets.append({
+            "token": token_m.group(1),
+            "sheet_id": sid_m.group(1),
+            "full_tag": full_tag
+        })
+    return sheets
+
+
+def fetch_sheet_csv(token, sheet_id):
+    """通过 lark-cli sheets +csv-get 读取电子表格数据
+
+    使用 --rows-json 模式获取结构化数据，便于后续构建表格。
+
+    返回: (rows_data, col_indices) 元组，或 None（读取失败时）
+        rows_data: [{"row_number": N, "values": {"A": "val", ...}}, ...]
+        col_indices: ["A", "B", ...]
+    """
+    cmd = [
+        "lark-cli", "sheets", "+csv-get",
+        "--spreadsheet-token", token,
+        "--sheet-id", sheet_id,
+        "--rows-json",
+        "--format", "json"
+    ]
+    print(f"    [sheets +csv-get] token={token[:16]}... sheet_id={sheet_id[:8]}...")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        print(f"    Timeout reading sheet data", file=sys.stderr)
+        return None
+    if result.returncode != 0:
+        error_msg = (result.stderr or result.stdout)[:300]
+        print(f"    Error reading sheet: {error_msg}", file=sys.stderr)
+        return None
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        print(f"    JSON parse error: {e}", file=sys.stderr)
+        return None
+    if not data.get("ok"):
+        print(f"    API error: {json.dumps(data)[:200]}", file=sys.stderr)
+        return None
+    rows_data = data.get("data", {}).get("rows", [])
+    col_indices = data.get("data", {}).get("col_indices", [])
+    if not rows_data:
+        print(f"    Sheet is empty (no rows)")
+    else:
+        print(f"    OK: {len(rows_data)} rows, {len(col_indices)} columns")
+    return (rows_data, col_indices)
+
+
+def csv_to_table_xml(rows_data, col_indices):
+    """将 rows-json 格式的数据转换为 HTML <table> XML
+
+    rows_data: [{"row_number": N, "values": {"A": "val", "B": "val"}}, ...]
+    col_indices: ["A", "B", ...]
+
+    第一行作为表头 (<thead><tr><th>)，其余行作为表体 (<tbody><tr><td>)。
+    空表格返回空字符串。
+    """
+    if not rows_data or not col_indices:
+        return ""
+
+    # 对单元格内容进行 XML 转义
+    def escape_xml(text):
+        if text is None:
+            return ""
+        text = str(text)
+        text = text.replace("&", "&amp;")
+        text = text.replace("<", "&lt;")
+        text = text.replace(">", "&gt;")
+        return text
+
+    parts = ["<table>"]
+
+    # 第一行作为表头
+    header_row = rows_data[0]
+    parts.append("<thead><tr>")
+    for col in col_indices:
+        val = header_row.get("values", {}).get(col, "")
+        parts.append(f"<th>{escape_xml(val)}</th>")
+    parts.append("</tr></thead>")
+
+    # 其余行作为表体
+    if len(rows_data) > 1:
+        parts.append("<tbody>")
+        for row in rows_data[1:]:
+            parts.append("<tr>")
+            for col in col_indices:
+                val = row.get("values", {}).get(col, "")
+                parts.append(f"<td>{escape_xml(val)}</td>")
+            parts.append("</tr>")
+        parts.append("</tbody>")
+
+    parts.append("</table>")
+    return "".join(parts)
+
+
 def download_images(images, output_dir):
     """使用 docs +media-preview 下载所有图片
 
@@ -215,9 +341,17 @@ def download_images(images, output_dir):
     return downloaded
 
 
-def build_content_with_placeholders(content, downloaded_images):
-    """构建含图片占位的 XML 内容"""
+def build_content_with_placeholders(content, downloaded_images, sheet_replacements=None):
+    """构建含图片占位的 XML 内容，同时替换嵌入电子表格为内联表格
+
+    sheet_replacements: [{"full_tag": "...", "table_xml": "<table>...</table>"}, ...]
+    """
     new_content = content
+    # 先替换嵌入电子表格
+    if sheet_replacements:
+        for sheet in sheet_replacements:
+            new_content = new_content.replace(sheet["full_tag"], sheet["table_xml"])
+    # 再替换图片占位
     for img in downloaded_images:
         new_content = new_content.replace(img["full_tag"],
                                           f"[图片占位: {img['name']}]")
@@ -281,18 +415,64 @@ def main():
     images = extract_image_tokens(content)
     print(f"  Found {len(images)} image(s)")
 
-    # Step 4: 下载图片
+    # Step 4: 提取并转换嵌入电子表格
+    print("\nStep 4: Extracting and converting embedded sheets...")
+    sheet_tags = extract_sheet_tags(content)
+    print(f"  Found {len(sheet_tags)} embedded sheet(s)")
+    sheet_replacements = []
+    embedded_sheets = []
+    if sheet_tags:
+        for i, st in enumerate(sheet_tags):
+            print(f"  [{i+1}/{len(sheet_tags)}] Sheet: token={st['token'][:16]}... sheet_id={st['sheet_id'][:8]}...")
+            csv_result = fetch_sheet_csv(st["token"], st["sheet_id"])
+            if csv_result:
+                rows_data, col_indices = csv_result
+                table_xml = csv_to_table_xml(rows_data, col_indices)
+                if table_xml:
+                    sheet_replacements.append({
+                        "full_tag": st["full_tag"],
+                        "table_xml": table_xml
+                    })
+                    embedded_sheets.append({
+                        "token": st["token"],
+                        "sheet_id": st["sheet_id"],
+                        "converted": True,
+                        "rows": len(rows_data),
+                        "columns": len(col_indices)
+                    })
+                    print(f"    -> Converted to inline table ({len(rows_data)} rows x {len(col_indices)} cols)")
+                else:
+                    embedded_sheets.append({
+                        "token": st["token"],
+                        "sheet_id": st["sheet_id"],
+                        "converted": False,
+                        "error": "Empty result after conversion"
+                    })
+                    print(f"    -> Skipped: empty table", file=sys.stderr)
+            else:
+                embedded_sheets.append({
+                    "token": st["token"],
+                    "sheet_id": st["sheet_id"],
+                    "converted": False,
+                    "error": "Failed to read sheet data"
+                })
+                print(f"    -> Skipped: failed to read data (sheet may be inaccessible)", file=sys.stderr)
+        print(f"  Converted {len(sheet_replacements)}/{len(sheet_tags)} sheet(s) to inline tables")
+    else:
+        print("  No embedded sheets found")
+
+    # Step 5: 下载图片
     if images:
-        print(f"\nStep 4: Downloading {len(images)} images...")
+        print(f"\nStep 5: Downloading {len(images)} images...")
         downloaded = download_images(images, rel_out)
         print(f"  Downloaded {len(downloaded)}/{len(images)}")
     else:
         downloaded = []
-        print("\nStep 4: No images to download")
+        print("\nStep 5: No images to download")
 
-    # Step 5: 构建含占位的 XML
-    print("\nStep 5: Building content XML with placeholders...")
-    xml_content = build_content_with_placeholders(content, downloaded)
+    # Step 6: 构建含占位的 XML
+    print("\nStep 6: Building content XML with placeholders...")
+    xml_content = build_content_with_placeholders(content, downloaded, sheet_replacements)
     xml_rel = os.path.join(rel_out, "content.xml")
     with open(os.path.join(output_dir, "content.xml"), "w", encoding="utf-8") as f:
         f.write(xml_content)
@@ -308,6 +488,7 @@ def main():
         "target_doc_id": target_doc_id,
         "space_id": space_id,
         "downloaded_images": downloaded,
+        "embedded_sheets": embedded_sheets,
         "xml_content_path": xml_rel,
         "output_dir": rel_out
     }
