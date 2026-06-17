@@ -520,6 +520,7 @@ def _format_results(rows, synced=False):
             "obj_type": r["obj_type"],
             "has_child": bool(r["has_child"]),
             "parent_token": r["parent_token"],
+            "space_id": r["space_id"] if "space_id" in r.keys() else None,
             "rank": r["rank"] if "rank" in r.keys() and r["rank"] is not None else None,
         })
     return {"ok": True, "results": results, "total": len(results), "synced": synced}

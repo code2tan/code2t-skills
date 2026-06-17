@@ -29,10 +29,6 @@ import sys
 import re
 import shutil
 
-# 默认知识空间
-DEFAULT_SPACE_ID = "7494564759545659393"
-DEFAULT_SPACE_NAME = "K.B.LLM DEV"
-
 
 def run_lark(args, description=""):
     """运行 lark-cli 命令并返回解析后的 JSON"""
@@ -61,10 +57,11 @@ def resolve_target_node(name=None, token=None, space_id=None, space_name=None):
     """解析目标节点。
 
     token 路径：直接调用 wiki +node-get。
-    name 路径：调用 wiki_tree.py search → 获取 node_token → wiki +node-get 获取 obj_token。
+    name 路径：调用 wiki_tree.py search → 获取 node_token → wiki +node-get 获取 obj_token 与 space_id。
     wiki_tree.py 内置按需同步，自动处理缓存新鲜度。
 
-    返回: (node_token, obj_token, title) 或 None
+    返回: (node_token, obj_token, title, space_id) 或 None。
+    space_id 从飞书 API 实时返回，不依赖任何硬编码值，因此本脚本支持任意知识空间。
     """
     if token:
         if not token.startswith("wik"):
@@ -76,7 +73,8 @@ def resolve_target_node(name=None, token=None, space_id=None, space_name=None):
                                 "--format", "json"], "get-target-node")
         if result and result.get("ok"):
             d = result.get("data", {})
-            return (d.get("node_token"), d.get("obj_token"), d.get("title"))
+            return (d.get("node_token"), d.get("obj_token"),
+                    d.get("title"), d.get("space_id"))
         print(f"  Failed to resolve token: {token}", file=sys.stderr)
         return None
 
@@ -118,13 +116,16 @@ def resolve_target_node(name=None, token=None, space_id=None, space_name=None):
     node_token = best["node_token"]
     print(f"  [wiki_tree] Found: {best['title']} ({node_token})")
 
-    # 通过 wiki +node-get 获取 obj_token
+    # 通过 wiki +node-get 获取 obj_token 和 space_id
     node_url = f"https://feishu.cn/wiki/{node_token}"
     result = run_lark(["wiki", "+node-get", "--node-token", node_url,
                         "--format", "json"], "get-target-node")
     if result and result.get("ok"):
         d = result.get("data", {})
-        return (d.get("node_token"), d.get("obj_token"), d.get("title"))
+        # 优先用 API 返回的 space_id；若 API 未返回，退回到 search 结果中的 space_id
+        resolved_space_id = d.get("space_id") or best.get("space_id")
+        return (d.get("node_token"), d.get("obj_token"),
+                d.get("title"), resolved_space_id)
 
     print(f"  Failed to resolve node_token: {node_token}", file=sys.stderr)
     return None
@@ -187,18 +188,44 @@ def extract_sheet_tags(content):
     """从文档 XML 中提取所有嵌入电子表格标签
 
     匹配格式: <sheet token="SPREADSHEET_TOKEN" sheet-id="SHEET_ID"></sheet>
+    也兼容自闭合格式: <sheet token="..." sheet-id="..." />
     属性顺序不敏感。跳过 type="blank" 的空白 sheet（无数据可读）。
+
+    注意事项：
+    1. 必须匹配完整的 sheet 元素（包括闭合标签），否则替换后会残留 </sheet> 污染内容。
+    2. 假设 <sheet> 不会被另一个 <sheet> 嵌套——飞书文档模型里 sheet 是叶子级 block，
+       不能嵌套 sheet/docx 等容器。`.*?` 非贪婪匹配在该假设下能就近匹配到第一个 </sheet>，
+       与文档真实结构一致。如果未来飞书引入了嵌套 sheet，需改用栈式 parser 重写。
+    3. <sheet> 内部理论上不会出现 <sheet 字面量字符串（飞书序列化时会转义），
+       但仍加一个事后断言：若匹配片段内含未预期的 <sheet 起始标签且不在末端，
+       打印警告以便排查。
 
     返回: [{"token": "...", "sheet_id": "...", "full_tag": "..."}, ...]
     """
     sheets = []
-    # 分两步匹配：先用宽泛正则匹配完整 <sheet> 标签，再从中提取属性
-    tag_pattern = re.compile(r'<sheet\s[^>]*?/?>', re.IGNORECASE)
+    # 匹配完整的 sheet 元素：
+    # 1. 自闭合: <sheet ... />
+    # 2. 有闭合标签: <sheet ...>...</sheet>（内容可能为空或包含子元素）
+    tag_pattern = re.compile(
+        r'<sheet\s[^>]*?/>'             # 自闭合格式
+        r'|'                              # 或
+        r'<sheet\s[^>]*?>.*?</sheet>',   # 有闭合标签格式
+        re.IGNORECASE | re.DOTALL
+    )
     token_pattern = re.compile(r'token="([^"]+)"', re.IGNORECASE)
     sheet_id_pattern = re.compile(r'sheet-id="([^"]+)"', re.IGNORECASE)
 
     for match in tag_pattern.finditer(content):
         full_tag = match.group(0)
+        # 嵌套侦测：如果 full_tag 中除起始位置外又出现 "<sheet "，
+        # 说明非贪婪匹配可能误把两个相邻的 sheet 合并了，需警告。
+        # 这种情形理论上不该出现，看到即视为数据异常。
+        inner_starts = [m.start() for m in re.finditer(r'<sheet\s', full_tag, re.IGNORECASE)]
+        if len(inner_starts) > 1:
+            print(f"  WARNING: nested or overlapping <sheet> detected in matched fragment "
+                  f"(starts at indices {inner_starts}); falling back may be needed.",
+                  file=sys.stderr)
+
         # 跳过空白 sheet（type="blank" 无实际数据）
         if 'type="blank"' in full_tag:
             token_m = token_pattern.search(full_tag)
@@ -209,6 +236,7 @@ def extract_sheet_tags(content):
         sid_m = sheet_id_pattern.search(full_tag)
         if not token_m or not sid_m:
             # 缺少必要属性，跳过
+            print(f"  Skip: sheet tag missing token or sheet-id: {full_tag[:80]}...")
             continue
         sheets.append({
             "token": token_m.group(1),
@@ -362,15 +390,34 @@ def build_content_with_placeholders(content, downloaded_images, sheet_replacemen
 
 def main():
     parser = argparse.ArgumentParser(description="lark-doc-to-wiki 准备工作")
-    parser.add_argument("--source-doc", required=True, help="源文档 URL 或 token")
+    # --cleanup 是独立模式，不需要其他参数
+    parser.add_argument("--cleanup", action="store_true",
+                        help="清理临时输出目录后退出（不执行迁移流程）")
+    parser.add_argument("--source-doc", help="源文档 URL 或 token（迁移流程必填）")
     target_group = parser.add_mutually_exclusive_group()
     target_group.add_argument("--target-token", help="目标知识库节点 token")
     target_group.add_argument("--target-name", help="目标知识库节点名称")
-    parser.add_argument("--space-name", default=DEFAULT_SPACE_NAME,
-                        help="知识空间名称（默认 K.B.LLM DEV）")
+    parser.add_argument("--space-name",
+                        help="知识空间名称（仅 --target-name 时需要，用于在该空间内搜索节点）")
+    parser.add_argument("--space-id",
+                        help="知识空间 ID（与 --space-name 二选一）")
     parser.add_argument("--output-dir", default="./lark_doc_to_wiki_temp",
                         help="临时文件目录")
     args = parser.parse_args()
+
+    # cleanup 模式：清理后立即退出
+    if args.cleanup:
+        cleanup(args.output_dir)
+        return
+
+    # 迁移模式：必填参数检查
+    if not args.source_doc:
+        parser.error("--source-doc is required (unless using --cleanup)")
+    if not (args.target_token or args.target_name):
+        parser.error("either --target-token or --target-name is required")
+    # 通过 --target-name 查找时必须指定一个空间标识
+    if args.target_name and not (args.space_name or args.space_id):
+        parser.error("--target-name requires --space-name or --space-id")
 
     output_dir = os.path.abspath(args.output_dir)
     os.makedirs(output_dir, exist_ok=True)
@@ -379,18 +426,22 @@ def main():
 
     print("=" * 50)
 
-    # Step 0: 解析目标父节点
+    # Step 0: 解析目标父节点（同时获得真实 space_id）
     label = f"name '{args.target_name}'" if args.target_name else "token"
     print(f"Step 0: Resolving parent node by {label}...")
     resolved = resolve_target_node(
         name=args.target_name, token=args.target_token,
-        space_name=args.space_name
+        space_name=args.space_name, space_id=args.space_id
     )
     if not resolved:
         sys.exit(1)
-    parent_node_token, parent_obj_token, parent_title = resolved
+    parent_node_token, parent_obj_token, parent_title, space_id = resolved
+    if not space_id:
+        print("  Could not determine space_id from API response", file=sys.stderr)
+        sys.exit(1)
     print(f"  Parent node: {parent_title}")
     print(f"  Parent doc ID: {parent_obj_token}")
+    print(f"  Space ID: {space_id}")
 
     # Step 1: 获取源文档
     print("\nStep 1: Fetching source document...")
@@ -401,9 +452,8 @@ def main():
                  or [None, "Untitled"]).group(1)
     print(f"  Source: {src_title}")
 
-    # Step 2: 在父节点下新建子节点
+    # Step 2: 在父节点下新建子节点（使用 API 返回的 space_id，支持任意空间）
     print(f"\nStep 2: Creating child node '{src_title}' under '{parent_title}'...")
-    space_id = DEFAULT_SPACE_ID
     child = create_child_node(parent_node_token, src_title, space_id)
     if not child:
         sys.exit(1)
@@ -448,7 +498,8 @@ def main():
                         "converted": False,
                         "error": "Empty result after conversion"
                     })
-                    print(f"    -> Skipped: empty table", file=sys.stderr)
+                    # 这是已知的"空表格"场景，不是异常，写到 stdout 即可
+                    print(f"    -> Skipped: empty table")
             else:
                 embedded_sheets.append({
                     "token": st["token"],
@@ -456,7 +507,9 @@ def main():
                     "converted": False,
                     "error": "Failed to read sheet data"
                 })
-                print(f"    -> Skipped: failed to read data (sheet may be inaccessible)", file=sys.stderr)
+                # 失败本身已经在 fetch_sheet_csv 内部打到 stderr 了；
+                # 这里只是流程汇总，写 stdout 让上层调用方区分
+                print(f"    -> Skipped: failed to read data (sheet may be inaccessible)")
         print(f"  Converted {len(sheet_replacements)}/{len(sheet_tags)} sheet(s) to inline tables")
     else:
         print("  No embedded sheets found")
@@ -531,12 +584,4 @@ def cleanup(output_dir="./lark_doc_to_wiki_temp"):
 
 
 if __name__ == "__main__":
-    if "--cleanup" in sys.argv:
-        output_dir = "./lark_doc_to_wiki_temp"
-        for i, arg in enumerate(sys.argv):
-            if arg == "--output-dir" and i + 1 < len(sys.argv):
-                output_dir = sys.argv[i + 1]
-                break
-        cleanup(output_dir)
-    else:
-        main()
+    main()
