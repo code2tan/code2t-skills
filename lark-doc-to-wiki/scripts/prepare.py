@@ -476,16 +476,29 @@ def build_content_with_placeholders(content, downloaded_images, sheet_replacemen
     """构建含图片占位的 XML 内容，同时替换嵌入电子表格为内联表格
 
     sheet_replacements: [{"full_tag": "...", "table_xml": "<table>...</table>"}, ...]
+
+    占位格式：`<p>[图片占位 #N: <name>]</p>`，其中 N 是 1-based 索引（与 meta.json
+    的 downloaded_images[N-1] 对应）。设计要点：
+
+    1. **必须用 <p> 包裹**：飞书源文档里 <img> 通常是块级元素（与 <p> 同级，不嵌在 <p> 内）。
+       直接把 <img/> 换成裸文本会让 overwrite 时的 docx 解析器把它当成 block 边界处的
+       游离文本而丢弃，导致后续 fetch 找不到任何占位 block。包成 <p> 后会变成正常的
+       text block，可被定位到。
+    2. **必须带索引号**：飞书图片很多时候 name 都是默认的 "image.png"，单凭名字区分不开。
+       索引号 N 让每个占位唯一，便于 +fetch with-ids 后通过 text 内容精确匹配 block_id。
+    3. 索引号与 meta.json 中 downloaded_images 数组下标一一对应（N=1 → index 0），
+       agent 据此把每张图片的 saved_path 与目标位置 placeholder 关联起来。
     """
     new_content = content
     # 先替换嵌入电子表格
     if sheet_replacements:
         for sheet in sheet_replacements:
             new_content = new_content.replace(sheet["full_tag"], sheet["table_xml"])
-    # 再替换图片占位
+    # 再替换图片占位（带 1-based 索引，包在 <p> 里以保证 overwrite 后能保留）
     for img in downloaded_images:
-        new_content = new_content.replace(img["full_tag"],
-                                          f"[图片占位: {img['name']}]")
+        idx = img.get("index", 0) + 1  # 1-based for human readability
+        placeholder = f"<p>[图片占位 #{idx}: {img['name']}]</p>"
+        new_content = new_content.replace(img["full_tag"], placeholder)
     return new_content
 
 

@@ -191,7 +191,11 @@ class TestCsvToTableXml(unittest.TestCase):
 
 
 class TestBuildContentWithPlaceholders(unittest.TestCase):
-    """关键回归测试：sheet 替换在 img 替换之前；替换后无残留闭合标签"""
+    """关键回归测试：
+    - sheet 替换在 img 替换之前；替换后无残留闭合标签
+    - img 占位包在 <p> 中（避免 overwrite 时被丢弃）
+    - 占位带 1-based 索引（让重名图片能被唯一定位）
+    """
 
     def test_sheet_replaced_before_img(self):
         # 验证 sheet 替换发生在 img 替换之前的执行顺序
@@ -202,6 +206,7 @@ class TestBuildContentWithPlaceholders(unittest.TestCase):
             '</doc>'
         )
         downloaded = [{
+            "index": 0,
             "full_tag": '<img token="img-tok" name="x.png"/>',
             "name": "x.png",
         }]
@@ -213,23 +218,60 @@ class TestBuildContentWithPlaceholders(unittest.TestCase):
             content, downloaded, sheet_replacements
         )
         self.assertIn("<table><tr><td>data</td></tr></table>", result)
-        self.assertIn("[图片占位: x.png]", result)
+        # 占位必须包在 <p> 里且带索引号 #1
+        self.assertIn("<p>[图片占位 #1: x.png]</p>", result)
         # 关键：替换后绝不能残留 <sheet 或 </sheet>
         self.assertNotIn("<sheet", result)
         self.assertNotIn("</sheet>", result)
         # 也不能有残留的 img 标签
         self.assertNotIn("<img", result)
 
+    def test_placeholder_wrapped_in_p_tag(self):
+        # 占位必须包在 <p> 中——这是为了让飞书 overwrite 时把它当成正常段落 block
+        content = '<doc><img token="t" name="image.png"/></doc>'
+        downloaded = [{
+            "index": 0,
+            "full_tag": '<img token="t" name="image.png"/>',
+            "name": "image.png",
+        }]
+        result = prepare.build_content_with_placeholders(content, downloaded, None)
+        self.assertEqual(result, '<doc><p>[图片占位 #1: image.png]</p></doc>')
+
+    def test_placeholders_are_unique_with_index(self):
+        # 多张同名图片（飞书默认都是 image.png）必须靠索引号区分
+        content = (
+            '<doc>'
+            '<img token="t1" name="image.png"/>'
+            '<p>middle</p>'
+            '<img token="t2" name="image.png"/>'
+            '</doc>'
+        )
+        downloaded = [
+            {"index": 0, "full_tag": '<img token="t1" name="image.png"/>', "name": "image.png"},
+            {"index": 1, "full_tag": '<img token="t2" name="image.png"/>', "name": "image.png"},
+        ]
+        result = prepare.build_content_with_placeholders(content, downloaded, None)
+        self.assertIn("<p>[图片占位 #1: image.png]</p>", result)
+        self.assertIn("<p>[图片占位 #2: image.png]</p>", result)
+        # 两个占位字符串必须不一致
+        self.assertNotEqual(
+            result.count("<p>[图片占位 #1: image.png]</p>"), 0
+        )
+        self.assertNotEqual(
+            result.count("<p>[图片占位 #2: image.png]</p>"), 0
+        )
+
     def test_no_sheet_replacements(self):
         # sheet_replacements 为 None 或空列表时不影响 img 替换
         content = '<doc><img token="t" name="a.png"/></doc>'
         downloaded = [{
+            "index": 0,
             "full_tag": '<img token="t" name="a.png"/>',
             "name": "a.png",
         }]
         # None
         r1 = prepare.build_content_with_placeholders(content, downloaded, None)
-        self.assertIn("[图片占位: a.png]", r1)
+        self.assertIn("<p>[图片占位 #1: a.png]</p>", r1)
         # 空列表
         r2 = prepare.build_content_with_placeholders(content, downloaded, [])
         self.assertEqual(r1, r2)
