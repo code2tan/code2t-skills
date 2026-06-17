@@ -159,7 +159,8 @@ def fetch_document(doc_url):
     """获取源文档内容"""
     result = run_lark([
         "docs", "+fetch", "--api-version", "v2",
-        "--doc", doc_url, "--format", "json"
+        "--doc", doc_url, "--format", "json",
+        "--doc-format", "xml"
     ], "fetch-source-doc")
     if not result or not result.get("ok"):
         print("  Failed to fetch source document", file=sys.stderr)
@@ -170,7 +171,8 @@ def fetch_document(doc_url):
 def extract_image_tokens(content):
     """从文档 XML 中提取所有图片 token"""
     images = []
-    pattern = re.compile(r'<img\s[^>]*?src="([^"]+)"[^>]*?/?>')
+    # fetch 返回 <img token="..." .../> 格式；也兼容 src="..." 格式
+    pattern = re.compile(r'<img\s[^>]*?(?:token|src)="([^"]+)"[^>]*?/?>')
     for match in pattern.finditer(content):
         token = match.group(1)
         full_tag = match.group(0)
@@ -322,7 +324,7 @@ Child node created: "{src_title}" under "{parent_title}"
 Target doc ID: {target_doc_id}
 
   Phase 1 — overwrite XML (fill the new blank document):
-    lark-cli docs +update --api-version v2 --doc "{target_doc_id}" --command overwrite --content @{xml_rel}
+    lark-cli docs +update --api-version v2 --doc "{target_doc_id}" --command overwrite --doc-format xml --content @{xml_rel}
 
   Phase 2 — insert images (at end):
     # for each image in meta.json 'downloaded_images':
