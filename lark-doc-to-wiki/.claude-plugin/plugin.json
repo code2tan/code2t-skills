@@ -1,7 +1,7 @@
 {
   "name": "lark-doc-to-wiki",
   "displayName": "Lark Doc to Wiki",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "将飞书文档内容（含图片、引用、格式）完整迁移到知识库指定节点下",
   "author": {
     "name": "code2tan"
