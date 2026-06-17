@@ -224,3 +224,4 @@ __marimo__/
 
 # lark-doc-to-wiki cache database
 lark-doc-to-wiki/wiki_tree.db
+.DS_Store
