@@ -242,6 +242,60 @@ class TestBuildContentWithPlaceholders(unittest.TestCase):
         self.assertIn('type="blank"', result)
 
 
+class TestColumnHelpers(unittest.TestCase):
+    """字母列号 ↔ 索引互转、A1 range → 列字母列表的纯函数测试。
+
+    这些是 lark-cli 1.x 不再返回 col_indices 后的兜底实现；
+    必须保证常见 spreadsheet 范围都能正确还原列序。
+    """
+
+    def test_alpha_to_idx_single(self):
+        self.assertEqual(prepare._alpha_to_idx("A"), 0)
+        self.assertEqual(prepare._alpha_to_idx("B"), 1)
+        self.assertEqual(prepare._alpha_to_idx("Z"), 25)
+
+    def test_alpha_to_idx_double(self):
+        self.assertEqual(prepare._alpha_to_idx("AA"), 26)
+        self.assertEqual(prepare._alpha_to_idx("AZ"), 51)
+        self.assertEqual(prepare._alpha_to_idx("BA"), 52)
+
+    def test_idx_to_alpha_roundtrip(self):
+        for letters in ["A", "Z", "AA", "AZ", "BA", "ZZ", "AAA"]:
+            self.assertEqual(
+                prepare._idx_to_alpha(prepare._alpha_to_idx(letters)),
+                letters,
+            )
+
+    def test_alpha_range_simple(self):
+        self.assertEqual(prepare._alpha_range("A", "C"), ["A", "B", "C"])
+        self.assertEqual(prepare._alpha_range("A", "A"), ["A"])
+
+    def test_alpha_range_across_double(self):
+        # Y, Z, AA, AB
+        self.assertEqual(prepare._alpha_range("Y", "AB"), ["Y", "Z", "AA", "AB"])
+
+    def test_derive_col_indices_from_range(self):
+        # 来自 +csv-get 的 actual_range="A1:C6"
+        cols = prepare._derive_col_indices("A1:C6", [])
+        self.assertEqual(cols, ["A", "B", "C"])
+
+    def test_derive_col_indices_from_rows_when_range_missing(self):
+        # 没有 range 时，从 rows 中收集出现过的列字母并按字母顺序排序
+        rows = [
+            {"row_number": 1, "values": {"A": "x", "C": "z"}},
+            {"row_number": 2, "values": {"B": "y"}},
+        ]
+        cols = prepare._derive_col_indices(None, rows)
+        self.assertEqual(cols, ["A", "B", "C"])
+
+    def test_derive_col_indices_handles_double_letter_range(self):
+        cols = prepare._derive_col_indices("A1:AB10", [])
+        # 总共 28 列：A..Z, AA, AB
+        self.assertEqual(len(cols), 28)
+        self.assertEqual(cols[0], "A")
+        self.assertEqual(cols[-1], "AB")
+
+
 class TestEndToEndSheetExtractionAndReplacement(unittest.TestCase):
     """
     端到端验证：从 fetched XML 提取 sheet → 假装成功转换 → 替换 → 校验无残留。

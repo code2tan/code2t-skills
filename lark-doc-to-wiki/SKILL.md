@@ -42,7 +42,7 @@ allowed-tools: Bash(python3 scripts/wiki_tree.py *), Bash(python3 scripts/prepar
 或者在 `prepare.py` 的输出中查看 `Step 4` 的日志：
 - `Found N embedded sheet(s)` — 发现 N 个嵌入电子表格
 - `Converted to inline table (M rows x K cols)` — 成功转换为内联表格
-- `Skipped: ...` — 转换失败，原因可能是权限不足或表格为空
+- `Skipped: ...` — 转换失败。常见原因：当前用户对该 sheet 无访问权限、sheet 为空、或 lark-cli 接口变化（如 `csv-get` 必填参数变更）。看 stderr 中的具体 API 错误来判断。
 
 ### 三种处理结果
 

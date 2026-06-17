@@ -246,23 +246,73 @@ def extract_sheet_tags(content):
     return sheets
 
 
+def fetch_sheet_range(token, sheet_id):
+    """通过 lark-cli sheets +sheet-info 获取 sub-sheet 的实际数据范围（A1 表示法）。
+
+    `+csv-get` 从 lark-cli 1.x 起强制要求 --range；不能再裸取整张 sheet。
+    `+sheet-info` 返回的 `range` 字段（形如 "A1:C6"）正好能直接喂给 csv-get。
+
+    返回: A1 范围字符串（如 "A1:C6"）；或 None（读取失败/没有范围信息时）。
+    """
+    cmd = [
+        "lark-cli", "sheets", "+sheet-info",
+        "--spreadsheet-token", token,
+        "--sheet-id", sheet_id,
+        "--format", "json"
+    ]
+    print(f"    [sheets +sheet-info] token={token[:16]}... sheet_id={sheet_id[:8]}...")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        print(f"    Timeout reading sheet info", file=sys.stderr)
+        return None
+    if result.returncode != 0:
+        error_msg = (result.stderr or result.stdout)[:300]
+        print(f"    Error reading sheet info: {error_msg}", file=sys.stderr)
+        return None
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        print(f"    JSON parse error (sheet-info): {e}", file=sys.stderr)
+        return None
+    if not data.get("ok"):
+        # 这里才是真正的权限不足/sheet 不存在等场景，把原始 error 抛出去
+        err = data.get("error", {})
+        msg = err.get("message") or json.dumps(err, ensure_ascii=False)
+        print(f"    API error (sheet-info): {msg[:200]}", file=sys.stderr)
+        return None
+    rng = data.get("data", {}).get("range")
+    if not rng:
+        print(f"    Sheet has no range (empty sheet)")
+        return None
+    return rng
+
+
 def fetch_sheet_csv(token, sheet_id):
     """通过 lark-cli sheets +csv-get 读取电子表格数据
 
     使用 --rows-json 模式获取结构化数据，便于后续构建表格。
 
-    返回: (rows_data, col_indices) 元组，或 None（读取失败时）
+    流程：先用 +sheet-info 拿到该 sub-sheet 的实际 A1 范围（lark-cli 1.x
+    起 csv-get 必须传 --range），再用该范围调 +csv-get 读取行数据。
+
+    返回: (rows_data, col_indices) 元组，或 None（读取失败/空表时）
         rows_data: [{"row_number": N, "values": {"A": "val", ...}}, ...]
         col_indices: ["A", "B", ...]
     """
+    a1_range = fetch_sheet_range(token, sheet_id)
+    if not a1_range:
+        return None
+
     cmd = [
         "lark-cli", "sheets", "+csv-get",
         "--spreadsheet-token", token,
         "--sheet-id", sheet_id,
+        "--range", a1_range,
         "--rows-json",
         "--format", "json"
     ]
-    print(f"    [sheets +csv-get] token={token[:16]}... sheet_id={sheet_id[:8]}...")
+    print(f"    [sheets +csv-get] range={a1_range} sheet_id={sheet_id[:8]}...")
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     except subprocess.TimeoutExpired:
@@ -278,15 +328,68 @@ def fetch_sheet_csv(token, sheet_id):
         print(f"    JSON parse error: {e}", file=sys.stderr)
         return None
     if not data.get("ok"):
-        print(f"    API error: {json.dumps(data)[:200]}", file=sys.stderr)
+        err = data.get("error", {})
+        msg = err.get("message") or json.dumps(err, ensure_ascii=False)
+        print(f"    API error (csv-get): {msg[:200]}", file=sys.stderr)
         return None
     rows_data = data.get("data", {}).get("rows", [])
-    col_indices = data.get("data", {}).get("col_indices", [])
+    # lark-cli 1.x 不再返回 col_indices；从 range 或 rows 中推导。
+    col_indices = data.get("data", {}).get("col_indices") \
+        or _derive_col_indices(data.get("data", {}).get("range") or a1_range, rows_data)
     if not rows_data:
         print(f"    Sheet is empty (no rows)")
     else:
         print(f"    OK: {len(rows_data)} rows, {len(col_indices)} columns")
     return (rows_data, col_indices)
+
+
+def _derive_col_indices(a1_range, rows_data):
+    """从 A1 range（如 "A1:C6"）或 rows 数据推导列字母序列。
+
+    优先用 range 字符串解析——结果稳定且包含空列；
+    退回用 rows 中出现过的列字母（按字母顺序排序），用于 range 缺失/异常的兜底。
+    """
+    # 先尝试从 A1 range 解析列字母
+    if a1_range and ":" in a1_range:
+        try:
+            start, end = a1_range.split(":", 1)
+            start_col = re.match(r"([A-Z]+)", start, re.IGNORECASE)
+            end_col = re.match(r"([A-Z]+)", end, re.IGNORECASE)
+            if start_col and end_col:
+                return _alpha_range(start_col.group(1).upper(), end_col.group(1).upper())
+        except Exception:
+            pass
+    # 退回：从 rows 里收集
+    seen = set()
+    for r in rows_data:
+        seen.update(r.get("values", {}).keys())
+    return sorted(seen, key=_alpha_to_idx)
+
+
+def _alpha_to_idx(letters):
+    """将列字母（'A'..'Z'..'AA'..）转为 0-based 索引"""
+    n = 0
+    for ch in letters.upper():
+        n = n * 26 + (ord(ch) - ord("A") + 1)
+    return n - 1
+
+
+def _idx_to_alpha(idx):
+    """将 0-based 索引转回列字母"""
+    s = ""
+    n = idx + 1
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(ord("A") + r) + s
+    return s
+
+
+def _alpha_range(start, end):
+    """生成 [start..end] 的列字母列表，例如 ('A','C') -> ['A','B','C']"""
+    a, b = _alpha_to_idx(start), _alpha_to_idx(end)
+    if b < a:
+        a, b = b, a
+    return [_idx_to_alpha(i) for i in range(a, b + 1)]
 
 
 def csv_to_table_xml(rows_data, col_indices):
