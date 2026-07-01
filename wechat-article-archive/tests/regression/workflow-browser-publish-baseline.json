@@ -1,0 +1,21 @@
+{
+  "case_id": "case-003-workflow-browser-publish",
+  "workflow": {
+    "source_url": "https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzIyNjM2MzQyNg==&action=getalbum&album_id=4252229065035661315&scene=126&sessionid=1781446803516#wechat_redirect",
+    "album_dir": "tests/regression/workflow/artifacts/album",
+    "links_path": "tests/regression/workflow/artifacts/album/album-links.txt",
+    "archive_dir": "tests/regression/workflow/artifacts/archive",
+    "batch_exitcode": 0,
+    "zip_path": "tests/regression/workflow/artifacts/archive.zip"
+  },
+  "browser_count": 20,
+  "publish": {
+    "target": "both",
+    "archive_dir": "tests/regression/workflow/artifacts/archive",
+    "document_count": 2,
+    "asset_count": 12,
+    "mode": "offline-package",
+    "note": "Online write requires user-authorized lark-doc or ima-skill execution by the agent. This package contains no cookies or tokens."
+  },
+  "errors": []
+}

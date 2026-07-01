@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "regression": "publish-v06-three-mode",
+  "generated_at": "2026-06-15T06:40:33.345779+00:00",
+  "skill_version": "0.6.0",
+  "modes": {
+    "handoff": {
+      "dir_exists": true,
+      "required_files": {
+        "HANDOFF.md": true,
+        "assets.jsonl": true,
+        "documents.jsonl": true,
+        "handoff-tasks.json": true,
+        "index.md": true,
+        "publish-manifest.json": true
+      },
+      "missing_files": [],
+      "document_lines": 1,
+      "asset_lines": 0,
+      "manifest_status": null,
+      "manifest_mode": "handoff",
+      "manifest_provider": null
+    },
+    "offline": {
+      "dir_exists": true,
+      "required_files": {
+        "HANDOFF.md": true,
+        "assets.jsonl": true,
+        "documents.jsonl": true,
+        "handoff-tasks.json": true,
+        "index.md": true,
+        "publish-manifest.json": true
+      },
+      "missing_files": [],
+      "document_lines": 1,
+      "asset_lines": 0,
+      "manifest_status": null,
+      "manifest_mode": "offline",
+      "manifest_provider": null
+    },
+    "online-request": {
+      "dir_exists": true,
+      "required_files": {
+        "HANDOFF.md": true,
+        "assets.jsonl": true,
+        "documents.jsonl": true,
+        "handoff-tasks.json": true,
+        "index.md": true,
+        "publish-manifest.json": true
+      },
+      "missing_files": [],
+      "document_lines": 1,
+      "asset_lines": 0,
+      "manifest_status": null,
+      "manifest_mode": "online-request",
+      "manifest_provider": null
+    }
+  },
+  "expected": {
+    "modes": [
+      "handoff",
+      "offline",
+      "online-request"
+    ],
+    "required_mode_files": [
+      "HANDOFF.md",
+      "assets.jsonl",
+      "documents.jsonl",
+      "handoff-tasks.json",
+      "index.md",
+      "publish-manifest.json"
+    ],
+    "offline_zip_excluded_from_upload_package": true,
+    "no_token_cookie_session_in_outputs": true
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "wechat-article-archive",
+  "displayName": "WeChat Article Archive",
+  "version": "0.6.0",
+  "description": "将微信公众号文章归档为 Markdown、图片、元数据、批量索引、浏览器上下文提取、增量目录，及飞书/IMA 发布包",
+  "author": {
+    "name": "code2tan"
+  },
+  "homepage": "https://github.com/code2tan/code2t-skills",
+  "repository": "https://github.com/code2tan/code2t-skills",
+  "license": "MIT",
+  "keywords": [
+    "微信",
+    "WeChat",
+    "微信公众号",
+    "wiki",
+    "归档"
+  ],
+  "skills": "./"
+}

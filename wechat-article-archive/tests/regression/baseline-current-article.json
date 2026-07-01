@@ -1,0 +1,32 @@
+{
+  "case_id": "case-001-current-public-article",
+  "seed_url": "https://mp.weixin.qq.com/s/0KKx-nM4Ub0IGI1aU_C_ig",
+  "article_dir": "tests/regression/artifacts/current-article/花叔/实测GLM-5.2百万上下文，我让他做了85页的世界杯前瞻！-208a8793",
+  "zip_path": "tests/regression/artifacts/current-article/花叔/实测GLM-5.2百万上下文，我让他做了85页的世界杯前瞻！-208a8793.zip",
+  "meta": {
+    "title": "实测GLM-5.2百万上下文，我让他做了85页的世界杯前瞻！",
+    "account_name": "花叔",
+    "author": "花叔",
+    "source_url": "https://mp.weixin.qq.com/s/0KKx-nM4Ub0IGI1aU_C_ig",
+    "final_url": "https://mp.weixin.qq.com/s/0KKx-nM4Ub0IGI1aU_C_ig",
+    "publish_time": "2026-06-14 09:57:22",
+    "biz": "Mzg2OTA1OTAxNA==",
+    "digest": "就在昨天，魔幻得有点不真实。早上一睁眼，看到 Anthropic 收到了美国商务部的一封信。"
+  },
+  "image_stats": {
+    "total": 10,
+    "ok": 10,
+    "failed": 0,
+    "pending": 0
+  },
+  "checks": {
+    "article.md": true,
+    "article.html": true,
+    "metadata.json": true,
+    "article.docx": true,
+    "article.pdf": true,
+    "article_zip": true
+  },
+  "exitcode": "0",
+  "stderr": ""
+}

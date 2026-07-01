@@ -1,0 +1,71 @@
+{
+  "case_id": "case-002-public-album-page",
+  "album_url": "https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzIyNjM2MzQyNg==&action=getalbum&album_id=4252229065035661315&scene=126&sessionid=1781446803516#wechat_redirect",
+  "album_count": 20,
+  "first_items": [
+    {
+      "title": "",
+      "link": "http://mp.weixin.qq.com/s?__biz=MzIyNjM2MzQyNg==&mid=2247716704&idx=1&sn=0da9f06eeca04b5ec0dcc155012adaca&chksm=e87c5e2ddf0bd73b863d8c6d97bee9fc1a66e300d943d7018019ad1168625c8032d1c1d2f8c9#rd"
+    },
+    {
+      "title": "",
+      "link": "http://mp.weixin.qq.com/s?__biz=MzIyNjM2MzQyNg==&mid=2247716652&idx=1&sn=afa354d1d7582c8f654b2ed1f1f4ece0&chksm=e87c5e61df0bd77751400c363215d3b135fe0128c4f44445003f1a839ee4c04e2c535e17b329#rd"
+    },
+    {
+      "title": "",
+      "link": "http://mp.weixin.qq.com/s?__biz=MzIyNjM2MzQyNg==&mid=2247715251&idx=1&sn=c8d32490d030108896990484905a1482&chksm=e87c58fedf0bd1e8e71c47d9e2549e0fd8562154a2eb6183df9bc762f789fd7c4a6cd7f00776#rd"
+    },
+    {
+      "title": "",
+      "link": "http://mp.weixin.qq.com/s?__biz=MzIyNjM2MzQyNg==&mid=2247715107&idx=1&sn=59771b9fa13895009c813543f5b480e9&chksm=e87c586edf0bd178539775e795575d3a2cfe13cda31ebfcad61c87427a3f867b747e248126ac#rd"
+    },
+    {
+      "title": "",
+      "link": "http://mp.weixin.qq.com/s?__biz=MzIyNjM2MzQyNg==&mid=2247715041&idx=1&sn=855940f5de5135807cfdf70f09f9fc89&chksm=e87c59acdf0bd0ba472f67c24ed012825ccb1bed28d43c4010e1a1e57041eef335549c480be7#rd"
+    }
+  ],
+  "links_path": "tests/regression/album/artifacts/album-links.txt",
+  "extra_article_urls": [
+    "https://mp.weixin.qq.com/s/PAc-N_XZZQO3D14pI2SOBg",
+    "https://mp.weixin.qq.com/s/InoL3g4jkCaD8rNCEFigVA"
+  ],
+  "extra_current_results": [
+    {
+      "url": "https://mp.weixin.qq.com/s/PAc-N_XZZQO3D14pI2SOBg",
+      "status": "failed",
+      "article_dir": "",
+      "title": "",
+      "account_name": "",
+      "publish_time": "",
+      "error": "未找到公众号正文节点 #js_content；可能需要登录、文章不可访问或页面结构已变化。"
+    },
+    {
+      "url": "https://mp.weixin.qq.com/s/InoL3g4jkCaD8rNCEFigVA",
+      "status": "ok",
+      "article_dir": "tests/regression/album/extra-current/articles/商汤科技SenseTime/孵化多部爆款短剧！商汤Seko上线“无限画布”-2b2d7964",
+      "title": "孵化多部爆款短剧！商汤Seko上线“无限画布”",
+      "account_name": "商汤科技SenseTime",
+      "publish_time": "2026-06-09 18:21:03",
+      "error": ""
+    }
+  ],
+  "expected_failure_urls": [
+    "https://mp.weixin.qq.com/s/PAc-N_XZZQO3D14pI2SOBg"
+  ],
+  "expected_failure_probe": {
+    "status_code": 200,
+    "final_url": "https://mp.weixin.qq.com/s/PAc-N_XZZQO3D14pI2SOBg",
+    "length": 2292588,
+    "has_js_content": false,
+    "title": [
+      "\n"
+    ],
+    "contains_verify": true,
+    "snippet": "<!DOCTYPE html> <html class=\"\"> <head> <meta name=\"wechat-enable-text-zoom-em\" content=\"true\"> <meta name=\"wechat-enable-text-size-adjust\" content=\"true\"> <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta name=\"color-scheme\" content=\"light dark\"> <meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0,viewport-fit=cover\"> <link rel=\"shortcut icon\" type=\"image/x-icon\" "
+  },
+  "extra_in_album": {
+    "https://mp.weixin.qq.com/s/PAc-N_XZZQO3D14pI2SOBg": false,
+    "https://mp.weixin.qq.com/s/InoL3g4jkCaD8rNCEFigVA": false
+  },
+  "errors": []
+}
