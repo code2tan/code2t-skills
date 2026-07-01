@@ -14,6 +14,11 @@
       "name": "lark-doc-to-wiki",
       "source": "./lark-doc-to-wiki",
       "description": "将飞书文档（含图片、引用、格式）完整迁移到知识库指定节点下"
+    },
+    {
+      "name": "wechat-article-archive",
+      "source": "./wechat-article-archive",
+      "description": "将微信公众号文章归档为 Markdown、图片、元数据、批量索引、浏览器上下文提取、增量目录，及飞书/IMA 发布包"
     }
   ]
 }
