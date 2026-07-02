@@ -1030,7 +1030,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     current = sub.add_parser("current", help="Archive one article link.")
     current.add_argument("url")
-    current.add_argument("--output", default="wechat-archive")
+    current.add_argument("--output", default=".", help="Output directory; defaults to the current working directory so the article lands directly under ./<account>/<title>/.")
     current.add_argument("--formats", default="md,html,json", help="Comma separated: md,html,json,docx,pdf")
     current.add_argument("--cookie", default="", help="Optional user-provided legal Cookie.")
     current.add_argument("--retries", type=int, default=2)

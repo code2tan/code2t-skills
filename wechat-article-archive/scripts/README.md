@@ -15,7 +15,7 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py batch --links examples/batch-l
 ## album
 
 ```bash
-$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py album "https://mp.weixin.qq.com/mp/appmsgalbum?..." --output output/wechat-album --limit 20
+$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py album "https://mp.weixin.qq.com/mp/appmsgalbum?..." --output wechat-album --limit 20
 ```
 
 加 `--archive` 后会把导出的 `album-links.txt` 交给 batch 归档。

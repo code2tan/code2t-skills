@@ -51,10 +51,12 @@ tags:
 
 ## 默认执行流程
 
+> 单篇文章默认直接保存到当前工作目录：文章落到 `./账号名/标题-digest/` 下，不创建额外的归档根目录。批量、合集、发布等多文件任务默认在当前目录下创建对应名称的子目录（如 `wechat-batch-archive/`）以容纳索引与清单文件，避免污染工作区；任何任务都可用 `--output <目录>` 覆盖输出位置。
+
 ### 1. 当前文章归档
 
 ```bash
-$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py current "<url>" --output output/wechat-archive --formats md,html,json --zip
+$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py current "<url>" --formats md,html,json --zip
 ```
 
 ### 2. 批量文章归档
@@ -62,7 +64,7 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py current "<url>" --output outpu
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py batch \
   --links examples/batch-links.txt \
-  --output output/wechat-batch-archive \
+  --output wechat-batch-archive \
   --formats md,html,json,docx,pdf \
   --resume \
   --article-zip \
@@ -74,9 +76,9 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py batch \
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py batch \
   --links examples/batch-links.txt \
-  --output output/wechat-batch-archive \
+  --output wechat-batch-archive \
   --incremental \
-  --catalog output/wechat-batch-archive/catalog.json
+  --catalog wechat-batch-archive/catalog.json
 ```
 
 输出：
@@ -95,7 +97,7 @@ index.md
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py album \
   "https://mp.weixin.qq.com/mp/appmsgalbum?..." \
-  --output output/wechat-album \
+  --output wechat-album \
   --archive \
   --incremental
 ```
@@ -107,7 +109,7 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py album \
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py browser-context \
   --input browser-page.html \
-  --output output/wechat-browser-context \
+  --output wechat-browser-context \
   --archive \
   --incremental
 ```
@@ -123,7 +125,7 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py history \
   --limit 20 \
   --archive \
   --incremental \
-  --output output/wechat-history
+  --output wechat-history
 ```
 
 如果接口返回异常，需要把 `history-response.json` 或 `history-error.txt` 交给用户，并说明可能是 Cookie 过期、token 缺失、微信风控或接口变化。
@@ -132,11 +134,11 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py history \
 
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py publish \
-  --archive output/wechat-batch-archive \
+  --archive wechat-batch-archive \
   --target both \
   --mode handoff \
   --destination "目标飞书文档或 IMA 知识库" \
-  --output output/wechat-publish-package
+  --output wechat-publish-package
 ```
 
 输出：

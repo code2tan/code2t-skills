@@ -36,7 +36,7 @@ https://mp.weixin.qq.com/mp/appmsgalbum?__biz=...&album_id=...
 Agent 应先使用浏览器读取工具保存当前页面 URL/HTML/正文到 JSON，再调用：
 
 ```bash
-$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py browser-context --input browser-context.json --output output/browser-links --archive
+$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py browser-context --input browser-context.json --output browser-links --archive
 ```
 
 ## 飞书 / IMA 发布
@@ -46,7 +46,7 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py browser-context --input browse
 ```
 
 ```bash
-$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py publish --archive output/wechat-workflow/archive --target both --output output/publish-package --zip
+$BOX_AGENT_PYTHON scripts/fetch_wechat_article.py publish --archive wechat-workflow/archive --target both --output wechat-publish-package --zip
 ```
 
 ## 增量资料库更新

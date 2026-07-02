@@ -31,11 +31,11 @@ publish-package/
 
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py publish \
-  --archive output/wechat-archive \
+  --archive wechat-batch-archive \
   --target both \
   --mode handoff \
   --destination "demo-knowledge-base" \
-  --output output/publish-package
+  --output wechat-publish-package
 ```
 
 - `offline`：只整理本地文件，不表达线上写入意图。
@@ -66,9 +66,9 @@ $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py publish \
 ```bash
 $BOX_AGENT_PYTHON scripts/fetch_wechat_article.py batch \
   --links links.txt \
-  --output output/archive \
+  --output wechat-batch-archive \
   --incremental \
-  --catalog output/archive/catalog.json
+  --catalog wechat-batch-archive/catalog.json
 ```
 
 输出：
